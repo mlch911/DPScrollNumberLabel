@@ -443,6 +443,15 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
 - (void)makeSingleAnimationWithCell:(UILabel *)cell duration:(CGFloat)duration delay:(CGFloat)delay animationCount:(NSInteger)count displayNumber:(NSInteger)displayNumber{
     int sign = displayNumber >= 0 ? 1 : -1;
     
+    if (_cancleBackToScrollAnimation) {
+        if ((self.tag == 2 || self.tag == 4) && displayNumber == 5) {
+            [self moveNumberCell:cell toNumber:6 sign:sign];
+        } else {
+            if (displayNumber == 9) {
+                [self moveNumberCell:cell toNumber:10 sign:sign];
+            }
+        }
+    }
     [UIView animateWithDuration:duration delay:delay options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self moveNumberCell:cell toNumber:displayNumber sign:sign];
     } completion:^(BOOL finished) {
