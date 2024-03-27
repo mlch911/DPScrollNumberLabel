@@ -32,6 +32,8 @@ typedef NS_ENUM(NSUInteger, SignSetting) {
  */
 @property (nonatomic, strong, readonly) NSNumber *currentNumber;
 
+@property (nonatomic, assign, readwrite) BOOL cancleBackToScrollAnimation;
+
 @property (nonatomic, strong) UIFont *font;
 
 @property (nonatomic, strong) UIColor *textColor;
