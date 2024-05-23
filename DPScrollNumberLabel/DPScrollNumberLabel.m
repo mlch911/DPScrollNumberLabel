@@ -632,10 +632,22 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
 
 - (void)setFont:(UIFont *)font {
 	_font = font;
+	
+	CGRect rect = [numberCellText boundingRectWithSize:CGSizeZero
+											   options:NSStringDrawingUsesLineFragmentOrigin
+											attributes:@{NSFontAttributeName:self.font}
+											   context:nil];
+	self.cellWidth = rect.size.width;
+	self.numberCellHeight = rect.size.height;
+	self.signCellHeight = rect.size.height * signCellLineCount / numberCellLineCount;
 	[self.cellArray enumerateObjectsUsingBlock:^(UILabel * _Nonnull label, NSUInteger idx, BOOL * _Nonnull stop) {
 		label.font = font;
+		label.frame = CGRectMake((self.rowNumber + self.signRow - 1 - idx) * self.cellWidth, 0, self.cellWidth, self.numberCellHeight);
 	}];
 	self.signCell.font = font;
+	self.signCell.frame = CGRectMake(0, 0, self.cellWidth, self.signCellHeight);
+	self.bounds = CGRectMake(0, 0, (self.rowNumber + self.signRow) * self.cellWidth, self.numberCellHeight / numberCellLineCount);
+	[self invalidateIntrinsicContentSize];
 }
 
 - (UILabel *)makeNumberCell {
