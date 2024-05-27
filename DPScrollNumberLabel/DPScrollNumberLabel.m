@@ -164,6 +164,7 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
         self.rowNumber = (rowNumber > 0 && rowNumber <= 8) ? rowNumber : 0;
         self.maxRowNumber = (self.rowNumber == 0) ? 8 : rowNumber;
         self.signSetting = signSetting;
+		self.logBlock = nil;
         [self commonInit];
     }
     return self;
@@ -344,6 +345,7 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
     
     NSArray *repeatCountArray = [self getRepeatTimesWithChangeNumber:changeValue targetNumber:self.targetNumber.integerValue];
     NSArray *targetDisplayNums = [self getEachCellValueArrayWithTargetNumber:self.targetNumber.integerValue];
+	NSArray *previousDisplayNums = [self getEachCellValueArrayWithTargetNumber:previousNumber.integerValue];
     
     if (interval == 0) {
         interval = [self getIntervalWithPreviousNumber:previousNumber.integerValue targetNumber:self.targetNumber.integerValue];
@@ -358,11 +360,12 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
             NSNumber *repeat = [repeatCountArray objectAtIndex:i];
             NSInteger repeatCount = repeat.integerValue;
             NSNumber *willDisplayNum = [targetDisplayNums objectAtIndex:i];
+            NSNumber *previousDisplayNum = [previousDisplayNums objectAtIndex:i];
             UILabel *cell = [self.cellArray objectAtIndex:i];
             CGFloat startDuration = 0;
             
             if (repeatCount == 0) {
-                [self makeSingleAnimationWithCell:cell duration:interval delay:delay animationCount:repeatCountArray.count displayNumber:willDisplayNum.integerValue];
+                [self makeSingleAnimationWithCell:cell duration:interval delay:delay animationCount:repeatCountArray.count displayNumber:willDisplayNum.integerValue previousNumber:previousDisplayNum.integerValue];
             }else {
                 if (direction == ScrollAnimationDirectionIncrease) {
                     
@@ -413,41 +416,56 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
     [UIView animateWithDuration:attribute.startDuration delay:attribute.startDelay options:UIViewAnimationOptionCurveEaseIn animations:^{
         [self moveNumberCell:cell toNumber:(direction == ScrollAnimationDirectionIncrease)? 10 : 0 sign:attribute.sign];
     } completion:^(BOOL finished) {
-        NSLog(@"start animation finish!");
+        self.logBlock(@"start animation finish!");
         [self moveNumberCell:cell toNumber:(direction == ScrollAnimationDirectionIncrease)? 0 : 10 sign:attribute.sign];
         if (attribute.cycleDuration == 0) {
             [UIView animateWithDuration:attribute.endDuration delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
                 [self moveNumberCell:cell toNumber:attribute.targetNumber sign:attribute.sign];
             } completion:^(BOOL finished) {
                 [self oneAnimationDidFinishedWithTotalCount:count];
-                NSLog(@"end animation finish!");
+                self.logBlock(@"end animation finish!");
             }];
         }else {
             [UIView animateWithDuration:attribute.cycleDuration delay:0 options:UIViewAnimationOptionCurveLinear | UIViewAnimationOptionRepeat animations:^{
                 [UIView setAnimationRepeatCount:attribute.repeatCount];
                 [self moveNumberCell:cell toNumber:(direction == ScrollAnimationDirectionIncrease) ? 10 : 0 sign:attribute.sign];
             } completion:^(BOOL finished) {
-                NSLog(@"cycle animation finish!");
+                self.logBlock(@"cycle animation finish!");
                 [self moveNumberCell:cell toNumber:(direction == ScrollAnimationDirectionIncrease)?0 : 10 sign:attribute.sign];
                 [UIView animateWithDuration:attribute.endDuration delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
                     [self moveNumberCell:cell toNumber:attribute.targetNumber sign:attribute.sign];
                 } completion:^(BOOL finished) {
                     [self oneAnimationDidFinishedWithTotalCount:count];
-                    NSLog(@"end animation finish!");
+                    self.logBlock(@"end animation finish!");
                 }];
             }];
         }
     }];
 }
 
-- (void)makeSingleAnimationWithCell:(UILabel *)cell duration:(CGFloat)duration delay:(CGFloat)delay animationCount:(NSInteger)count displayNumber:(NSInteger)displayNumber{
+- (void)makeSingleAnimationWithCell:(UILabel *)cell duration:(CGFloat)duration delay:(CGFloat)delay animationCount:(NSInteger)count displayNumber:(NSInteger)displayNumber previousNumber:(NSInteger)previousNumber {
     int sign = displayNumber >= 0 ? 1 : -1;
-    
+	void (^completionBlock)(void);
+	
+	if (self.continuingAnimation) {
+		if (previousNumber == 0 && displayNumber == 9) {
+			[self moveNumberCell:cell toNumber:10 sign:sign];
+		} else if (previousNumber == 9 && displayNumber == 0) {
+			displayNumber = 10;
+			completionBlock = ^{
+				[self moveNumberCell:cell toNumber:0 sign:sign];
+			};
+		}
+	}
+	
     [UIView animateWithDuration:duration delay:delay options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self moveNumberCell:cell toNumber:displayNumber sign:sign];
     } completion:^(BOOL finished) {
+		if (completionBlock) {
+			completionBlock();
+		}
         [self oneAnimationDidFinishedWithTotalCount:count];
-        NSLog(@"single animation finish!");
+        self.logBlock(@"single animation finish!");
     }];
 }
 
@@ -547,7 +565,7 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
     return numberRow;
 }
 
-- (void)moveNumberCell:(UILabel *)cell toNumber:(NSInteger)number sign:(NSInteger)sign{
+- (void)moveNumberCell:(UILabel *)cell toNumber:(NSInteger)number sign:(NSInteger)sign {
     CGFloat x = cell.frame.origin.x;
     CGFloat floatNumber = abs((int)number);
     CGFloat y = - self.numberCellHeight / numberCellLineCount * 10 - sign * ((CGFloat)floatNumber / numberCellLineCount) * self.numberCellHeight;
@@ -648,6 +666,10 @@ static NSString * const numberCellText = @"0\n9\n8\n7\n6\n5\n4\n3\n2\n1\n0\n1\n2
 	self.signCell.frame = CGRectMake(0, 0, self.cellWidth, self.signCellHeight);
 	self.bounds = CGRectMake(0, 0, (self.rowNumber + self.signRow) * self.cellWidth, self.numberCellHeight / numberCellLineCount);
 	[self invalidateIntrinsicContentSize];
+}
+
+- (void)setLogBlock:(void (^)(NSString *))logBlock {
+	_logBlock = logBlock ?: (^(NSString *l) {});
 }
 
 - (UILabel *)makeNumberCell {

@@ -36,6 +36,11 @@ typedef NS_ENUM(NSUInteger, SignSetting) {
 
 @property (nonatomic, strong) UIColor *textColor;
 
+/// By default, when animate from 0 to 9 or from 9 to 0, there will be a big reverse animtation. Enable continuing animation by this.
+@property (nonatomic, assign) BOOL continuingAnimation;
+
+@property (nonatomic, copy) void (^logBlock)(NSString *);
+
 /**
  dynamic init method, the instance created by this method have a dynamic row count, it's row will change with the value you setting
 
